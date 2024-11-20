@@ -1,35 +1,52 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react'; 
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { obtenerhistorial, vaciarHistorial } from '@/hooks/storage';
+import { Canasta } from './CarritoCompras';
 
-type HistorialItem = {
-  id: string;
-  fecha: string;
-  descripcion: string;
-};
+const HistorialScreen: React.FC = () => {
+  const [historial, setHistorial] = useState<Canasta[]>([]);
 
-const historialData: HistorialItem[] = [
-  { id: '1', fecha: '2024-10-12', descripcion: 'Papas fritas crujientes' },
-  { id: '2', fecha: '2024-11-05', descripcion: 'No pude' },
-  { id: '3', fecha: '2025-11-25', descripcion: 'Profe colabore por favor' },
-];
+  useEffect(() => {
+    cargarHistorial();
+  }, []);
 
-const historial: React.FC = () => {
-  const renderHistorialItem = ({ item }: { item: HistorialItem }) => (
-    <View style={styles.historialItem}>
-      <Text style={styles.fecha}>{item.fecha}</Text>
-      <Text style={styles.descripcion}>{item.descripcion}</Text>
-    </View>
-  );
+  const cargarHistorial = async () => {
+    const historialData: Canasta[] = await obtenerhistorial();
+    const historialOrdenado = historialData.sort((a, b) => {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+    setHistorial(historialOrdenado);
+  };
+
+  const limpiarHistorialCompras = async () => {
+    await vaciarHistorial();
+    cargarHistorial();
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Historial</Text>
       <FlatList
-        data={historialData}
-        renderItem={renderHistorialItem}
+        data={historial}
+        renderItem={({ item }) => (
+          <View style={styles.itemContainer}>
+            <Text style={styles.dateText}>Fecha: {new Date(item.date).toLocaleString()}</Text>
+            {item.items.map((producto) => (
+              <Text key={producto.id} style={styles.productText}>
+                {producto.name} - Cantidad: {producto.cantidad}
+              </Text>
+            ))}
+            <Text style={styles.totalText}>
+              Total con domicilio: ${item.totalConEnvio ? item.totalConEnvio : '0.00'}
+            </Text>
+          </View>
+        )}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.historialList}
       />
+      <TouchableOpacity style={styles.buttonContainer} onPress={limpiarHistorialCompras}>
+        <View style={styles.button}>
+          <Text style={styles.buttonText}>Limpiar Historial</Text>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -38,37 +55,58 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f0f0f0',
+   
   },
-  titulo: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  itemContainer: {
+    backgroundColor: '#16213e', 
     marginBottom: 16,
-    color: '#333',
-  },
-  historialList: {
-    paddingBottom: 16,
-  },
-  historialItem: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0f3460',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  fecha: {
-    fontSize: 14,
-    color: '#666',
+  dateText: {
+    fontWeight: '700',
+    fontSize: 18,
+    color: '#e94560', 
+    marginBottom: 10,
   },
-  descripcion: {
+  productText: {
     fontSize: 16,
-    color: '#333',
-    marginTop: 4,
+    color: '#e1e1e1', 
+    marginVertical: 6,
+    paddingLeft: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#e94560', 
+  },
+  totalText: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    color: '#a8dadc', 
+    marginTop: 12,
+  },
+  buttonContainer: {
+    marginTop: 24,
+    backgroundColor: '#e94560', 
+    borderRadius: 8,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  button: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1.2,
   },
 });
 
-export default historial;
+export default HistorialScreen;

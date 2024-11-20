@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import ProductoComida from '../components/comida';
+import Comida from '../components/comida';
 
 
-interface Producto {
+interface plato {
   id: number;
   name: string;
   category: string;
@@ -13,34 +13,43 @@ interface Producto {
   description: string;
 }
 
-const Productos: Producto[] = [
-  { id: 1, name: 'Papas fritas', category: 'Productos a la Carta', image: '../assets/images/papas fritas crujientes.jpg', price: 5000, description: 'papas fritas crujientes ' },
+const Productos: plato[] = [
+  { id: 1, name: 'Papas fritas', category: 'Platos de la carta', image: '../assets/images/papas fritas crujientes.jpg', price: 10000, description: 'papas fritas crujientes ' },
+  { id: 2, name: 'CocaCola', category: 'Bebidas Frías', image: '../assets/images/cocacola.jpg', price: 5000, description: 'Refrescate con una gaseosa fria' },
+  { id: 3, name: 'late', category: 'Bebidas Calientes', image: '../assets/images/late.jpg', price: 4000, description: 'Late colombiano realizado e¿a base de leche y cafe' },
+  { id: 4, name: 'Pechuga a ranchera', category: 'Platos de la carta', image: '../assets/images/pechugaRanchera.jpg', price: 30000, description: 'Pechuga a la plancha, con salsa de chorizo y maiz'},
+  { id: 5, name: 'Lasagna', category: 'Platos del día', image: '../assets/images/lasagna.jpg', price: 30000, description: 'Lasagna realizada a base de carne molida' },
+  { id: 6, name: 'Picada', category: 'Platos de la carta', image: '../assets/images/picada.jpg', price: 25000, description: 'Picada del dia con dierentes tipo de carne y papa' },
   // Agrega más Productos según sea necesario
 ];
 
 const Menu: React.FC = () => {
-  const [CatSelected, setCatSelected] = useState<string>('Todas');
-  const router = useRouter();
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string>('Todas');
 
-  const filteredProductos = CatSelected === 'Todas'
+  // Filtra los platos según la categoría seleccionada
+  const filteredPlatos = categoriaSeleccionada === 'Todas'
     ? Productos
-    : Productos.filter(Producto => Producto.category === CatSelected);
+    : Productos.filter(plato => plato.category === categoriaSeleccionada);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Menú Restaurante</Text>
-      <View style={styles.CatContent}>
-        {['Todas', 'Bebidas Frías', 'Bebidas Calientes', 'Sopas', 'Productos del día', 'Productos de la carta', 'Menú infantil'].map(category => (
-          <TouchableOpacity key={category} onPress={() => setCatSelected(category)} style={styles.CatBoton}>
-            <Text style={[, CatSelected === category && styles.CatSelected]}>{category}</Text>
+      <Text style={styles.title}>Menú</Text>
+      <View style={styles.categoryContainer}>
+        {['Todas', 'Bebidas Frías', 'Bebidas Calientes', 'Sopas', 'Platos del día', 'Platos de la carta', 'Menú infantil'].map(category => (
+          <TouchableOpacity key={category} onPress={() => setCategoriaSeleccionada(category)} style={styles.botonCategoria}>
+            <Text style={[styles.categoriaTexto, categoriaSeleccionada === category && styles.categoriaSeleccionada]}>
+              {category}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
       <FlatList
-        data={filteredProductos}
+        data={filteredPlatos}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-            <ProductoComida plato={item}/>
+          <TouchableOpacity key={item.id}>
+            <Comida plato={item} />
+          </TouchableOpacity>
         )}
       />
     </View>
@@ -51,37 +60,42 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     padding: 16, 
-    backgroundColor: '#f5f5f5',
   },
-  titulo: { 
+  title: { 
     fontSize: 30, 
     fontWeight: 'bold', 
-    marginBottom: 1, 
-    color: '#333',
-    alignSelf: 'center'
+    marginBottom: 20, 
+    color: '#e94560', 
+    textAlign: 'center',
   },
-  CatContent: { 
+  categoryContainer: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
-    marginBottom: 5, 
+    marginBottom: 16, 
+    justifyContent: 'center',
   },
-  CatBoton: { 
-    paddingVertical: 10, 
-    paddingHorizontal: 8, 
-    margin: 1, 
-    backgroundColor: '#9DFAF0', 
+  botonCategoria: { 
+    paddingVertical: 12, 
+    paddingHorizontal: 16, 
+    margin: 6, 
+    borderRadius: 25, 
+    backgroundColor: '#16213e',
     borderWidth: 1, 
+    borderColor: '#0f3460', 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  CategoriaTexto: { 
+  categoriaTexto: { 
     fontSize: 16, 
-    color: '#444'
+    color: '#a8dadc', 
   },
-  CatSelected: { 
-    color: '#fffff', 
+  categoriaSeleccionada: { 
+    color: '#e94560', 
     fontWeight: 'bold',
-  }
+  },
 });
-
-
 
 export default Menu;

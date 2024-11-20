@@ -1,72 +1,83 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Button } from 'react-native';
-import { obtenerPedido, eliminarPedido,guardarhistorial,vaciarPedido } from '@/hooks/storage';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { obtenerPedido, vaciarPedido, eliminarPedido, guardarhistorial } from '@/hooks/storage';
 
-export interface canasta {
+export interface Canasta {
   id: string;
   date: string;
-  items:pedido[];
-  totalSinEnvio: number, 
-  costoEnvio:number,
-  totalConEnvio:number,
-};
-
-export interface pedido{
-    id:number;
-    name:string;
-    image:string;
-    description: string;
-    cantidad:number;
-    price: number;
+  items: Pedido[];
+  totalSinEnvio: number;
+  costoEnvio: number;
+  totalConEnvio: number;
 }
 
+export interface Pedido {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  description: string;
+  cantidad: number;
+}
 
 const CarritoScreen: React.FC = () => {
-const [carritoCompras, setCarritoComras]=useState<any[]>([]);
+  const [carrito, setCarrito] = useState<Pedido[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
-useEffect(()=> {
+  useEffect(() => {
+    cargarCarrito();
+  }, []);
 
-})
-const cargar = async ()=>{
-
-}
-  const modificarCantidad = (id: string, cantidad: number) => {
-    const nuevoPedido = carritoCompras.map(item =>{
-        if(item.id===id){
-            return {...item,cantidad};
-        }
-        return item;
-    });
-    setCarritoComras(nuevoPedido);
+  const cargarCarrito = async () => {
+    const itemsCarrito = await obtenerPedido();
+    console.log("Carrito cargado:", itemsCarrito);
+    setCarrito(itemsCarrito);
   };
 
-  const eliminarProducto = async (id: string) => {
-    await eliminarPedido(id);
-    cargar();
-};
-
-  const cancelarCompra = async () => {
-    await vaciarPedido();
-    await cargar();
-};
-
-const compra = async () => {
+  const confirmarCompra = async () => {
+    if (carrito.length === 0) {
+      setModalMessage("No hay nada en el carrito.");
+      setModalVisible(true);
+      return;
+    }
     const { totalSinEnvio, costoEnvio, totalConEnvio } = calcularTotal();
-    const canasta: canasta = {
+    const compra: Canasta = {
       id: new Date().getTime().toString(),
       date: new Date().toISOString(),
-      items: carritoCompras,
-      totalSinEnvio, 
+      items: carrito,
+      totalSinEnvio,
       costoEnvio,
       totalConEnvio,
     };
-    await guardarhistorial(canasta);
-    await vaciarPedido();      
-    cargar();
+    console.log("Confirmando compra...");
+    await guardarhistorial(compra);
+    await vaciarPedido();
+    setModalMessage("La compra fue realizada con éxito.");
+    setModalVisible(true);
+    cargarCarrito();
+  };
+
+  const eliminarItem = async (id: string) => {
+    console.log("Eliminando item con ID:", id);
+    await eliminarPedido(id);
+    cargarCarrito();
+    setModalMessage("El producto ha sido eliminado del carrito.");
+    setModalVisible(true);
+  };
+
+  const modificarCantidad = (id: string, cantidad: number) => {
+    const newCarrito = carrito.map(item => {
+      if (item.id === id) {
+        return { ...item, cantidad };
+      }
+      return item;
+    });
+    setCarrito(newCarrito);
   };
 
   const calcularTotal = () => {
-    const totalSinEnvio = carritoCompras.reduce((total, item) => total + item.price * item.cantidad, 0);
+    const totalSinEnvio = carrito.reduce((total, item) => total + item.price * item.cantidad, 0);
     let costoEnvio = 5000;
 
     if (totalSinEnvio > 90000) {
@@ -76,50 +87,71 @@ const compra = async () => {
     }
 
     const totalConEnvio = totalSinEnvio + costoEnvio;
-
     return { totalSinEnvio, costoEnvio, totalConEnvio };
   };
 
   const { totalSinEnvio, costoEnvio, totalConEnvio } = calcularTotal();
 
-  const renderProducto = ({ item }: { item: pedido }) => (
-    <View style={styles.productoItem}>
-      <Text style={styles.nombre}>{item.name}</Text>
-      <Text style={styles.precio}>${item.price} </Text>
-      <View style={styles.cantidadContenedor}>
-        <TouchableOpacity onPress={() => modificarCantidad(item.id, Math.max(1,item.cantidad-1))} style={styles.botonCantidad}>
-          <Text style={styles.botonCantidadText}>-</Text>
-        </TouchableOpacity>
-        <Text style={styles.cantidad}>{item.cantidad}</Text>
-        <TouchableOpacity onPress={() => modificarCantidad(item.id, 1)} style={styles.botonCantidad}>
-          <Text style={styles.botonCantidadText}>+</Text>
-        </TouchableOpacity>
+  const renderItem = ({ item }: { item: Pedido }) => (
+    <View style={styles.itemContainer}>
+      <Text style={styles.itemName}>{item.name}</Text>
+      <Text style={styles.itemPrice}>Precio: ${item.price}</Text>
+      <Text style={styles.itemCantidad}>Cantidad: {item.cantidad}</Text>
+      
+      <View style={styles.cantidadContainer}>
+        <Button title="-" onPress={() => modificarCantidad(item.id, Math.max(1, item.cantidad - 1))} />
+        <Text style={styles.cantidadText}>{item.cantidad}</Text>
+        <Button title="+" onPress={() => modificarCantidad(item.id, item.cantidad + 1)} />
       </View>
-      <TouchableOpacity onPress={() => eliminarProducto(item.id)} style={styles.botonEliminar}>
-        <Text style={styles.botonEliminarText}>Eliminar</Text>
+      <TouchableOpacity style={styles.eliminarButton} onPress={() => eliminarItem(item.id)}>
+        <Text style={styles.eliminarButtonText}>Eliminar</Text>
       </TouchableOpacity>
     </View>
   );
 
+  const cancelarPedido = async () => {
+    await vaciarPedido();
+    await cargarCarrito();
+    setModalMessage("Se ha cancelado el pedido.");
+    setModalVisible(true);
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Carrito de Compras</Text>
-      {productos.length > 0 ? (
-        <FlatList
-          data={productos}
-          renderItem={renderProducto}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listaProductos}
-        />
-      ) : (
-        <Text style={styles.mensajeVacio}>Tu carrito está vacío.</Text>
-      )}
-      <TouchableOpacity onPress={cancelarCompra} style={styles.botonCancelar}>
-        <Text style={styles.botonCancelarText}>Cancelar Compra</Text>
+      <Text style={styles.title}>Carrito de Compras</Text>
+      <FlatList
+        data={carrito}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderItem}
+      />
+      <View style={styles.totalContainer}>
+        <Text style={styles.totalText}>Total sin Envío: ${totalSinEnvio}</Text>
+        <Text style={styles.totalText}>Costo de Envío: ${costoEnvio}</Text>
+        <Text style={styles.totalText}>Total a Pagar: ${totalConEnvio}</Text>
+      </View>
+      <TouchableOpacity style={styles.buttonContainer} onPress={confirmarCompra}>
+        <View style={styles.button}>
+          <Text style={styles.buttonText}>Confirmar Compra</Text>
+        </View>
       </TouchableOpacity>
-      <TouchableOpacity onPress={Comprar} style={styles.botonCancelar}>
-        <Text style={styles.botonCancelarText}>Comprar</Text>
+      <TouchableOpacity style={styles.buttonContainer} onPress={cancelarPedido}>
+        <View style={styles.button}>
+          <Text style={styles.buttonText}>Cancelar Pedido</Text>
+        </View>
       </TouchableOpacity>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>{modalMessage}</Text>
+            <Button title="Aceptar" onPress={() => setModalVisible(false)} />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -128,87 +160,110 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f8f8f8',
+    
   },
-  titulo: {
-    fontSize: 24,
+  title: {
+    fontSize: 28,
     fontWeight: 'bold',
+    color: '#e94560', 
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  itemContainer: {
+    backgroundColor: '#16213e',
     marginBottom: 16,
-    color: '#333',
-  },
-  listaProductos: {
-    paddingBottom: 16,
-  },
-  productoItem: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0f3460', 
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  nombre: {
+  itemName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#e94560', 
+  },
+  itemPrice: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    color: '#a8dadc', 
+    marginVertical: 6,
   },
-  precio: {
+  itemCantidad: {
     fontSize: 16,
-    color: '#888',
-    marginVertical: 4,
+    color: '#e1e1e1', 
   },
-  cantidadContenedor: {
+  cantidadContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    marginVertical: 10,
   },
-  cantidad: {
-    fontSize: 16,
-    marginHorizontal: 12,
-    color: '#333',
+  cantidadText: {
+    fontSize: 18,
+    color: '#e94560', 
+    marginHorizontal: 16,
   },
-  botonCantidad: {
-    backgroundColor: '#ededed',
+  eliminarButton: {
+    marginTop: 10,
+    paddingVertical: 10,
+    backgroundColor: '#e94560', 
     borderRadius: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    alignItems: 'center',
   },
-  botonCantidadText: {
-    fontSize: 16,
+  eliminarButtonText: {
+    color: '#fff',
     fontWeight: 'bold',
-    color: '#333',
   },
-  botonEliminar: {
-    marginTop: 12,
-    backgroundColor: '#ff6b6b',
-    borderRadius: 5,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  botonEliminarText: {
-    color: '#ffffff',
-    fontWeight: '600',
-  },
-  botonCancelar: {
+  totalContainer: {
     marginTop: 20,
-    backgroundColor: '#ff4d4d',
+    padding: 20,
+    backgroundColor: '#0f3460', 
     borderRadius: 8,
-    paddingVertical: 12,
     alignItems: 'center',
   },
-  botonCancelarText: {
-    color: '#ffffff',
-    fontSize: 16,
+  totalText: {
+    fontSize: 20,
+    color: '#a8dadc', 
+    marginBottom: 8,
+  },
+  buttonContainer: {
+    marginTop: 20,
+    backgroundColor: '#e94560',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  button: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '600',
   },
-  mensajeVacio: {
-    fontSize: 16,
-    color: '#666',
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalView: {
+    width: 320,
+    padding: 25,
+    backgroundColor: '#1a1a2e', 
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 6,
+  },
+  modalText: {
+    fontSize: 18,
+    color: '#a8dadc', 
     textAlign: 'center',
-    marginTop: 20,
+    marginBottom: 20,
   },
 });
 
